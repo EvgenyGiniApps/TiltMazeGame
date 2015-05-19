@@ -39,7 +39,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
-import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
@@ -50,159 +49,165 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.TextView;
 import android.widget.Button;
+import android.widget.TextView;
 
 
 public class TiltMazesActivity extends Activity {
-	protected PowerManager.WakeLock mWakeLock;
-	
-	private MazeView mMazeView;
-	
-	private static final int MENU_RESTART = 1;
-	private static final int MENU_MAP_PREV = 2;
-	private static final int MENU_MAP_NEXT = 3;
-	private static final int MENU_SENSOR = 4;
-	private static final int MENU_SELECT_MAZE = 5;
-	private static final int MENU_ABOUT = 6;
-	
-	private static final int REQUEST_SELECT_MAZE = 1;
-	
-	private Dialog mAboutDialog;
-	
-	private Intent mSelectMazeIntent;
-	
-	private TextView mMazeNameLabel;
-	private TextView mRemainingGoalsLabel;
-	private TextView mStepsLabel;
+    private static final int MENU_RESTART = 1;
+    private static final int MENU_MAP_PREV = 2;
+    private static final int MENU_MAP_NEXT = 3;
+    private static final int MENU_SENSOR = 4;
+    private static final int MENU_SELECT_MAZE = 5;
+    private static final int MENU_ABOUT = 6;
+    private static final int REQUEST_SELECT_MAZE = 1;
+    private static AlertDialog mGiniMazeSolvedDialog;
+    private static boolean mGameEndedSuccessfully = false;
+    protected PowerManager.WakeLock mWakeLock;
+    boolean cameFromMediApplication = false;
+    int timeToPlayBeforeClosing = 1000 * 60 * 2;
+    private MazeView mMazeView;
+    private Dialog mAboutDialog;
+    private Intent mSelectMazeIntent;
+    private TextView mMazeNameLabel;
+    private TextView mRemainingGoalsLabel;
+    private TextView mStepsLabel;
+    private GestureDetector mGestureDetector;
+    private GameEngine mGameEngine;
+    private Handler myHandler = new Handler();
+    private boolean mActivityIsRunning = true;
+    private Runnable closeControls = new Runnable() {
+        @Override
+        public void run() {
+            if (mActivityIsRunning) {
+                mGameEndedSuccessfully = true;
+                mGiniMazeSolvedDialog = showCustomDialog(TiltMazesActivity.this, "", getResources().getString(R.string.end_of_game), getResources().getString(R.string.OK));
+                mGiniMazeSolvedDialog.show();
+                broadCastGameEnd(mGameEndedSuccessfully);
+            }
 
-	private GestureDetector mGestureDetector;
-	private GameEngine mGameEngine;
+        }
+    };
 
-    private final int delayTime = 1000 * 2 * 60;
-	private Handler myHandler = new Handler();
-	private static AlertDialog mGiniMazeSolvedDialog;
-	private static boolean mGameEndedSuccessfully = false;
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-	@Override
-	public void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		
-		final PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        final PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK, "TiltMazes");
-         
-		mSelectMazeIntent = new Intent(TiltMazesActivity.this, SelectMazeActivity.class);
 
-		// Build the About Dialog
-		mAboutDialog = new Dialog(TiltMazesActivity.this);
-		mAboutDialog.setCancelable(true);
-		mAboutDialog.setCanceledOnTouchOutside(true);
-		mAboutDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-		mAboutDialog.setContentView(R.layout.about_layout);
+        mSelectMazeIntent = new Intent(TiltMazesActivity.this, SelectMazeActivity.class);
 
-		Button aboutDialogOkButton = (Button) mAboutDialog.findViewById(R.id.about_ok_button);
-		aboutDialogOkButton.setOnClickListener(new Button.OnClickListener() {
-			public void onClick(View v) {
-				mAboutDialog.cancel();
-			}
-		});
-				
-		requestWindowFeature(Window.FEATURE_NO_TITLE);
-		getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-				WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        // Build the About Dialog
+        mAboutDialog = new Dialog(TiltMazesActivity.this);
+        mAboutDialog.setCancelable(true);
+        mAboutDialog.setCanceledOnTouchOutside(true);
+        mAboutDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        mAboutDialog.setContentView(R.layout.about_layout);
 
-		setContentView(R.layout.game_layout);
+        Button aboutDialogOkButton = (Button) mAboutDialog.findViewById(R.id.about_ok_button);
+        aboutDialogOkButton.setOnClickListener(new Button.OnClickListener() {
+            public void onClick(View v) {
+                mAboutDialog.cancel();
+            }
+        });
 
-		// Show the About Dialog on the first start
-		if (getPreferences(MODE_PRIVATE).getBoolean("firststart", true)) {
-			getPreferences(MODE_PRIVATE).edit().putBoolean("firststart", false).commit();
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        setContentView(R.layout.game_layout);
+
+        // Show the About Dialog on the first start
+        if (getPreferences(MODE_PRIVATE).getBoolean("firststart", true)) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("firststart", false).commit();
 //			mAboutDialog.show(); Prevent dialog from showing on first time
-		}
-		
-		// Set up game engine and connect it with the relevant views
-		mGameEngine = new GameEngine(TiltMazesActivity.this);
-		mMazeView = (MazeView) findViewById(R.id.maze_view);
-		mGameEngine.setTiltMazesView(mMazeView);
-		mMazeView.setGameEngine(mGameEngine);
-		mMazeView.calculateUnit();
-		
-		mMazeNameLabel = (TextView) findViewById(R.id.maze_name);
-		mGameEngine.setMazeNameLabel(mMazeNameLabel);
-		mMazeNameLabel.setText(mGameEngine.getMap().getName());
-		mMazeNameLabel.invalidate();
-		
-		mRemainingGoalsLabel = (TextView) findViewById(R.id.remaining_goals);
-		mGameEngine.setRemainingGoalsLabel(mRemainingGoalsLabel);
+        }
 
-		mStepsLabel = (TextView) findViewById(R.id.steps);
-		mGameEngine.setStepsLabel(mStepsLabel);
-		
-		mGameEngine.restoreState(
-				savedInstanceState,
-				getPreferences(MODE_PRIVATE).getBoolean("sensorenabled", true)
-			);
-		
-		
-		// Create gesture detector to detect flings
-		mGestureDetector = new GestureDetector(new GestureDetector.SimpleOnGestureListener() {
-			@Override
-			public boolean onDown(MotionEvent e) {
-				return true;
-			}
-						
-			@Override
-			public boolean onFling(MotionEvent e1, MotionEvent e2,
-					float velocityX, float velocityY) {
-				// Roll the ball in the direction of the fling				
-				Direction mCommandedRollDirection = Direction.NONE;
-				
-				if (Math.abs(velocityX) > Math.abs(velocityY)) {
-					if (velocityX < 0)	mCommandedRollDirection = Direction.LEFT;
-					else				mCommandedRollDirection = Direction.RIGHT;
-				}
-				else {
-					if (velocityY < 0)	mCommandedRollDirection = Direction.UP;
-					else 				mCommandedRollDirection = Direction.DOWN;
-				}
+        // Set up game engine and connect it with the relevant views
+        mGameEngine = new GameEngine(TiltMazesActivity.this);
+        mMazeView = (MazeView) findViewById(R.id.maze_view);
+        mGameEngine.setTiltMazesView(mMazeView);
+        mMazeView.setGameEngine(mGameEngine);
+        mMazeView.calculateUnit();
 
-				if (mCommandedRollDirection != Direction.NONE) {
-					mGameEngine.rollBall(mCommandedRollDirection);
-				}
-				
-				return true;
-			}
-		});
-		mGestureDetector.setIsLongpressEnabled(false);
+        mMazeNameLabel = (TextView) findViewById(R.id.maze_name);
+        mGameEngine.setMazeNameLabel(mMazeNameLabel);
+        mMazeNameLabel.setText(mGameEngine.getMap().getName());
+        mMazeNameLabel.invalidate();
 
-        myHandler.postDelayed(closeControls, delayTime);
-	}
+        mRemainingGoalsLabel = (TextView) findViewById(R.id.remaining_goals);
+        mGameEngine.setRemainingGoalsLabel(mRemainingGoalsLabel);
 
-	@Override
-	public boolean onTouchEvent(MotionEvent event) {
-		return mGestureDetector.onTouchEvent(event);
-	}
-	
-	@Override
-	public boolean onKeyDown(int keyCode, KeyEvent event) {
-		switch (keyCode) {
-		case KeyEvent.KEYCODE_DPAD_LEFT:
-			mGameEngine.rollBall(Direction.LEFT);
-			return true;
-		case KeyEvent.KEYCODE_DPAD_RIGHT:
-			mGameEngine.rollBall(Direction.RIGHT);
-			return true;
-		case KeyEvent.KEYCODE_DPAD_UP:
-			mGameEngine.rollBall(Direction.UP);
-			return true;
-		case KeyEvent.KEYCODE_DPAD_DOWN:
-			mGameEngine.rollBall(Direction.DOWN);
-			return true;
+        mStepsLabel = (TextView) findViewById(R.id.steps);
+        mGameEngine.setStepsLabel(mStepsLabel);
 
-		default:
-			return super.onKeyDown(keyCode, event);
-		}
-	}
-	
+        mGameEngine.restoreState(
+                savedInstanceState,
+                getPreferences(MODE_PRIVATE).getBoolean("sensorenabled", true)
+        );
+
+
+        // Create gesture detector to detect flings
+        mGestureDetector = new GestureDetector(new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2,
+                                   float velocityX, float velocityY) {
+                // Roll the ball in the direction of the fling
+                Direction mCommandedRollDirection = Direction.NONE;
+
+                if (Math.abs(velocityX) > Math.abs(velocityY)) {
+                    if (velocityX < 0) mCommandedRollDirection = Direction.LEFT;
+                    else mCommandedRollDirection = Direction.RIGHT;
+                } else {
+                    if (velocityY < 0) mCommandedRollDirection = Direction.UP;
+                    else mCommandedRollDirection = Direction.DOWN;
+                }
+
+                if (mCommandedRollDirection != Direction.NONE) {
+                    mGameEngine.rollBall(mCommandedRollDirection);
+                }
+
+                return true;
+            }
+        });
+        mGestureDetector.setIsLongpressEnabled(false);
+
+        checkIfCameFromMedisense();
+
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return mGestureDetector.onTouchEvent(event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                mGameEngine.rollBall(Direction.LEFT);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                mGameEngine.rollBall(Direction.RIGHT);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                mGameEngine.rollBall(Direction.UP);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                mGameEngine.rollBall(Direction.DOWN);
+                return true;
+
+            default:
+                return super.onKeyDown(keyCode, event);
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
@@ -213,190 +218,193 @@ public class TiltMazesActivity extends Activity {
         menu.add(0, MENU_SENSOR, 0, R.string.menu_sensor);
         menu.add(0, MENU_SELECT_MAZE, 0, R.string.menu_select_maze);
         menu.add(0, MENU_ABOUT, 0, R.string.menu_about);
-        
+
         menu.findItem(MENU_MAP_PREV).setIcon(getResources().getDrawable(android.R.drawable.ic_media_previous));
         menu.findItem(MENU_RESTART).setIcon(getResources().getDrawable(android.R.drawable.ic_menu_rotate));
         menu.findItem(MENU_MAP_NEXT).setIcon(getResources().getDrawable(android.R.drawable.ic_media_next));
         menu.findItem(MENU_SENSOR).setIcon(getResources().getDrawable(
-        		mGameEngine.isSensorEnabled() ? android.R.drawable.button_onoff_indicator_on : android.R.drawable.button_onoff_indicator_off
-        	));
+                mGameEngine.isSensorEnabled() ? android.R.drawable.button_onoff_indicator_on : android.R.drawable.button_onoff_indicator_off
+        ));
         menu.findItem(MENU_SELECT_MAZE).setIcon(getResources().getDrawable(android.R.drawable.ic_menu_more));
         menu.findItem(MENU_ABOUT).setIcon(getResources().getDrawable(android.R.drawable.ic_menu_info_details));
-        
+
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-        case MENU_RESTART:
-        	mGameEngine.sendEmptyMessage(Messages.MSG_RESTART);
-            return true;
-            
-        case MENU_MAP_PREV:
-        	mGameEngine.sendEmptyMessage(Messages.MSG_MAP_PREVIOUS);
-            return true;
-            
-        case MENU_MAP_NEXT:
-        	mGameEngine.sendEmptyMessage(Messages.MSG_MAP_NEXT);
-            return true;
-            
-        case MENU_SENSOR:
-        	mGameEngine.toggleSensorEnabled();
-        	item.setIcon(getResources().getDrawable(
-            		mGameEngine.isSensorEnabled() ? android.R.drawable.button_onoff_indicator_on : android.R.drawable.button_onoff_indicator_off
-            	));
-        	getPreferences(MODE_PRIVATE).edit().putBoolean("sensorenabled", mGameEngine.isSensorEnabled()).commit();
-        	return true;
-        	
-        case MENU_SELECT_MAZE:
-        	startActivityForResult(mSelectMazeIntent, REQUEST_SELECT_MAZE);
-        	return true;
-        	
-        case MENU_ABOUT:
-        	mAboutDialog.show();
-        	return true;
-        }	
-        
+            case MENU_RESTART:
+                mGameEngine.sendEmptyMessage(Messages.MSG_RESTART);
+                return true;
+
+            case MENU_MAP_PREV:
+                mGameEngine.sendEmptyMessage(Messages.MSG_MAP_PREVIOUS);
+                return true;
+
+            case MENU_MAP_NEXT:
+                mGameEngine.sendEmptyMessage(Messages.MSG_MAP_NEXT);
+                return true;
+
+            case MENU_SENSOR:
+                mGameEngine.toggleSensorEnabled();
+                item.setIcon(getResources().getDrawable(
+                        mGameEngine.isSensorEnabled() ? android.R.drawable.button_onoff_indicator_on : android.R.drawable.button_onoff_indicator_off
+                ));
+                getPreferences(MODE_PRIVATE).edit().putBoolean("sensorenabled", mGameEngine.isSensorEnabled()).commit();
+                return true;
+
+            case MENU_SELECT_MAZE:
+                startActivityForResult(mSelectMazeIntent, REQUEST_SELECT_MAZE);
+                return true;
+
+            case MENU_ABOUT:
+                mAboutDialog.show();
+                return true;
+        }
+
         return false;
     }
-    
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    	super.onActivityResult(requestCode, resultCode, data);
-    	
-    	switch (requestCode) {
-    	case (REQUEST_SELECT_MAZE):
-    		if (resultCode == Activity.RESULT_OK) {
-    			int selectedMaze = data.getIntExtra("selected_maze", 0);
-    			mGameEngine.loadMap(selectedMaze);
-    		}
-    		break;
-    	}
+        super.onActivityResult(requestCode, resultCode, data);
+
+        switch (requestCode) {
+            case (REQUEST_SELECT_MAZE):
+                if (resultCode == Activity.RESULT_OK) {
+                    int selectedMaze = data.getIntExtra("selected_maze", 0);
+                    mGameEngine.loadMap(selectedMaze);
+                }
+                break;
+        }
     }
-    
+
     @Override
     protected void onStart() {
-    	super.onStart();
+        super.onStart();
     }
 
     @Override
     protected void onStop() {
-    	super.onStop();
-		Log.d("mazeGame", "onStop");
+        super.onStop();
+        Log.d("mazeGame", "onStop");
     }
-    
+
     @Override
-	protected void onPause() {
-		super.onPause();
-		mGameEngine.unregisterListener();
-		mWakeLock.release();
-		Log.d("mazeGame", "onPause");
-	}
+    protected void onPause() {
+        super.onPause();
+        mGameEngine.unregisterListener();
+        mWakeLock.release();
+        Log.d("mazeGame", "onPause");
+        finish();
+    }
 
-	@Override
-	protected void onResume() {
+    @Override
+    protected void onResume() {
         super.onResume();
-		mGameEngine.registerListener();
-		mWakeLock.acquire();
-	}
+        mGameEngine.registerListener();
+        mWakeLock.acquire();
 
-	@Override
-	public void onSaveInstanceState(Bundle icicle) {
-		super.onSaveInstanceState(icicle);
-		mGameEngine.saveState(icicle);
-		mGameEngine.unregisterListener();
-	}
-	
-	@Override
-	protected void onRestoreInstanceState(Bundle savedInstanceState) {
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle icicle) {
+        super.onSaveInstanceState(icicle);
+        mGameEngine.saveState(icicle);
+        mGameEngine.unregisterListener();
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
         mGameEngine.restoreState(
-				savedInstanceState,
-				getPreferences(MODE_PRIVATE).getBoolean("sensorenabled", true)
-		);
-	}
+                savedInstanceState,
+                getPreferences(MODE_PRIVATE).getBoolean("sensorenabled", true)
+        );
+    }
 
-	@Override
+    @Override
     protected void onDestroy() {
-		super.onDestroy();
-		Log.d("mazeGame", "onDestroy");
-		if (!mGameEndedSuccessfully){
-			broadCastGameEnd(false);
-		}
-	}
-
-	private void broadCastGameEnd(boolean isEndedSuccessfully) {
-		Intent intent = new Intent();
-		intent.setAction("com.giniapps.android.tiltmazes");
-		intent.putExtra("com.giniapps.android.tiltmazes", isEndedSuccessfully);
-		sendBroadcast(intent);
-		myHandler.removeCallbacks(closeControls);
-	}
+        super.onDestroy();
+        Log.d("mazeGame", "onDestroy");
+        mActivityIsRunning = false;
+        if (!mGameEndedSuccessfully) {
+            broadCastGameEnd(mGameEndedSuccessfully);
+        }
+    }
 
 //	public void onUserInteraction(){
 //		myHandler.removeCallbacks(closeControls);
-//        myHandler.postDelayed(closeControls, delayTime);
+//        myHandler.postDelayed(closeControls, timeToPlayBeforeClosing);
 //	}
 
+    private void broadCastGameEnd(boolean isEndedSuccessfully) {
+        Intent intent = new Intent();
+        intent.setAction("com.giniapps.android.tiltmazes");
+        intent.putExtra("com.giniapps.android.tiltmazes", isEndedSuccessfully);
+        sendBroadcast(intent);
+        myHandler.removeCallbacks(closeControls);
+    }
 
-	private Runnable closeControls = new Runnable() {
-		@Override
-		public void run() {
-			mGameEndedSuccessfully = true;
-			mGiniMazeSolvedDialog = showCustomDialog(TiltMazesActivity.this, "", getResources().getString(R.string.end_of_game), getResources().getString(R.string.OK));
-			mGiniMazeSolvedDialog.show();
-			broadCastGameEnd(true);
-		}
-	};
+    public AlertDialog showCustomDialog(Context c, String headText, String messageText, String buttomText) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(c);
+        LayoutInflater inflater = (LayoutInflater) c
+                .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View dialog = inflater.inflate(R.layout.dialog, null);
+        TextView message = (TextView) dialog.findViewById(R.id.dialog_message);
+        TextView messageHead = (TextView) dialog
+                .findViewById(R.id.dialog_message_head);
+        TextView messageButtom = (TextView) dialog
+                .findViewById(R.id.dialog_message_end);
 
-	public AlertDialog showCustomDialog(Context c, String headText, String messageText, String buttomText) {
-		AlertDialog.Builder builder = new AlertDialog.Builder(c);
-		LayoutInflater inflater = (LayoutInflater) c
-				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		View dialog = inflater.inflate(R.layout.dialog, null);
-		TextView message = (TextView) dialog.findViewById(R.id.dialog_message);
-		TextView messageHead = (TextView) dialog
-				.findViewById(R.id.dialog_message_head);
-		TextView messageButtom = (TextView) dialog
-				.findViewById(R.id.dialog_message_end);
+        if (messageText != null && messageText.length() > 0) {
+            message.setText(messageText);
+        } else {
+            message.setVisibility(View.GONE);
+        }
 
-		if (messageText != null && messageText.length() > 0) {
-			message.setText(messageText);
-		} else {
-			message.setVisibility(View.GONE);
-		}
-
-		if (headText != null && headText.length() > 0) {
-			messageHead.setText(headText);
+        if (headText != null && headText.length() > 0) {
+            messageHead.setText(headText);
 //			if (headTextColorRes > 0)
 //				messageHead.setTextColor(c.getResources().getColor(headTextColorRes));
-		} else {
-			messageHead.setVisibility(View.GONE);
-		}
+        } else {
+            messageHead.setVisibility(View.GONE);
+        }
 
-		if (buttomText != null && buttomText.length() > 0) {
-			messageButtom.setText(buttomText);
-		} else {
-			messageButtom.setVisibility(View.GONE);
-		}
+        if (buttomText != null && buttomText.length() > 0) {
+            messageButtom.setText(buttomText);
+        } else {
+            messageButtom.setVisibility(View.GONE);
+        }
 
-		dialog.setOnClickListener(new View.OnClickListener() {
-
-
-			public void onClick(View v) {
-				mGiniMazeSolvedDialog.dismiss();
-				finish();
-			}
-		});
-
-		dialog.findViewById(R.id.dialog_answer_container).setVisibility(
-				View.GONE);
-
-		builder.setView(dialog);
-		return builder.create();
-
-	}
+        dialog.setOnClickListener(new View.OnClickListener() {
 
 
+            public void onClick(View v) {
+                mGiniMazeSolvedDialog.dismiss();
+                finish();
+            }
+        });
+
+        dialog.findViewById(R.id.dialog_answer_container).setVisibility(
+                View.GONE);
+
+        builder.setView(dialog);
+        return builder.create();
+
+    }
+
+    public void checkIfCameFromMedisense() {
+        if (getIntent() != null && getIntent().getExtras() != null && getIntent().getExtras().getInt("time") > 0) {
+            cameFromMediApplication = true;
+            timeToPlayBeforeClosing = getIntent().getExtras().getInt("time");
+        }
+
+        if (cameFromMediApplication) {
+            myHandler.postDelayed(closeControls, timeToPlayBeforeClosing);
+        }
+
+        Log.e("MazeStarted", "came from medisense : " + cameFromMediApplication);
+    }
 }
