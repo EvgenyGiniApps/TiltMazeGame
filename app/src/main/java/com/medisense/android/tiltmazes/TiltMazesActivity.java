@@ -63,7 +63,7 @@ public class TiltMazesActivity extends Activity {
     private static final int MENU_ABOUT = 6;
     private static final int REQUEST_SELECT_MAZE = 1;
     private static AlertDialog mGiniMazeSolvedDialog;
-    private static boolean mGameEndedSuccessfully = false;
+    private boolean mGameEndedSuccessfully = false;
     protected PowerManager.WakeLock mWakeLock;
     boolean cameFromMediApplication = false;
     int timeToPlayBeforeClosing = 1000 * 60 * 2;
@@ -306,7 +306,7 @@ public class TiltMazesActivity extends Activity {
         super.onResume();
         mGameEngine.registerListener();
         mWakeLock.acquire();
-
+        mGameEndedSuccessfully=false;
     }
 
     @Override
@@ -328,7 +328,7 @@ public class TiltMazesActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Log.d("mazeGame", "onDestroy");
+        Log.d("mazeGame", "onDestroy : mGameEndedSuccessfully : " + mGameEndedSuccessfully);
         mActivityIsRunning = false;
         if (!mGameEndedSuccessfully) {
             broadCastGameEnd(mGameEndedSuccessfully);
@@ -341,6 +341,7 @@ public class TiltMazesActivity extends Activity {
 //	}
 
     private void broadCastGameEnd(boolean isEndedSuccessfully) {
+        Log.e("broadCastGameEnd","isEndedSuccessfully :" + isEndedSuccessfully);
         Intent intent = new Intent();
         intent.setAction(MAZE_GAME_TAG);
         intent.putExtra(MAZE_GAME_TAG, isEndedSuccessfully);
