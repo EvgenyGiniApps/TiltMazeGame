@@ -33,11 +33,11 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 import java.util.List;
 import java.util.LinkedList;
-import static com.giniapps.android.tiltmazes.Wall.*;
+import static com.medisense.android.tiltmazes.Wall.*;
 
 public final class MapDesigns {
 

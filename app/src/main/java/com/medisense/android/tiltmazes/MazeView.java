@@ -29,7 +29,7 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 import java.util.Timer;
 import java.util.TimerTask;

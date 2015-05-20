@@ -29,7 +29,7 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 import android.os.Bundle;
 import android.app.AlertDialog;
@@ -41,8 +41,6 @@ import android.os.Message;
 
 import android.hardware.SensorListener;
 import android.hardware.SensorManager;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.widget.TextView;
 
 

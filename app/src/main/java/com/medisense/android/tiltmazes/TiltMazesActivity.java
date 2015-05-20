@@ -29,7 +29,7 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -54,6 +54,7 @@ import android.widget.TextView;
 
 
 public class TiltMazesActivity extends Activity {
+    private static final String MAZE_GAME_TAG = "com.medisense.android.tiltmazes";
     private static final int MENU_RESTART = 1;
     private static final int MENU_MAP_PREV = 2;
     private static final int MENU_MAP_NEXT = 3;
@@ -341,8 +342,8 @@ public class TiltMazesActivity extends Activity {
 
     private void broadCastGameEnd(boolean isEndedSuccessfully) {
         Intent intent = new Intent();
-        intent.setAction("com.giniapps.android.tiltmazes");
-        intent.putExtra("com.giniapps.android.tiltmazes", isEndedSuccessfully);
+        intent.setAction(MAZE_GAME_TAG);
+        intent.putExtra(MAZE_GAME_TAG, isEndedSuccessfully);
         sendBroadcast(intent);
         myHandler.removeCallbacks(closeControls);
     }

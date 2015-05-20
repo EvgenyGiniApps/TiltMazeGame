@@ -40,7 +40,7 @@
     android:layout_height="fill_parent"
     android:background="@color/background">
 
-    <com.giniapps.android.tiltmazes.MazeView
+    <com.medisense.android.tiltmazes.MazeView
     		   android:id="@+id/maze_view"
     		   android:layout_width="fill_parent"
     		   android:layout_height="1dip"

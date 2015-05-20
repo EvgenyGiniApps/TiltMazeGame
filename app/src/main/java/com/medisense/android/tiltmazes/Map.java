@@ -29,71 +29,77 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
-public class MapDesign {
-	private String mName;
-	private int mSizeX = 0;
-	private int mSizeY = 0;
-	private int[][] mWalls;
+public class Map {
+	private MapDesign mDesign;
+
 	private int[][] mGoals;
-	private int mInitialPositionX;
-	private int mInitialPositionY;
-	private int mGoalCount = 0;
+	private int mGoalCount;
 
-	public MapDesign(String name,
-			int sizeX, int sizeY,
-			int[][] walls,
-			int[][] goals,
-			int initialPositionX,
-			int initialPositionY) {
-		mName = name;
-		mSizeX = sizeX;
-		mSizeY = sizeY;
-		mWalls = walls;
-		mGoals = goals;
-		mInitialPositionX = initialPositionX;
-		mInitialPositionY = initialPositionY;
-		for (int y = 0; y < mSizeY; y++) {
-			for (int x = 0; x < mSizeX; x++) {
-				mGoalCount = mGoalCount + mGoals[y][x];
-			}
-		}
+	public Map(MapDesign design) {
+		mDesign = design;
+		init();
+	}
+	
+	public void init() {
+		if (mGoals == null) mGoals = new int[mDesign.getSizeY()][mDesign.getSizeX()];
+		
+		int[][] goals = mDesign.getGoals();
+		for (int y = 0; y < mDesign.getSizeY(); y++)
+			for (int x = 0; x < mDesign.getSizeX(); x++)
+				mGoals[y][x] = goals[y][x];
+
+		mGoalCount = mDesign.getGoalCount();
 	}
 	
 	public String getName() {
-		return mName;
+		return mDesign.getName();
 	}
 
 	public int[][] getWalls() {
-		return mWalls;
+		return mDesign.getWalls();
 	}
 
 	public int getWalls(int x, int y) {
-		return mWalls[y][x];
+		return mDesign.getWalls(x, y);
 	}
 
 	public int[][] getGoals() {
 		return mGoals;
 	}
+
+	public int getGoal(int x, int y) {
+		return mGoals[y][x];
+	}
+
+	public void removeGoal(int x, int y) {
+		mGoalCount = mGoalCount - mGoals[y][x];
+		mGoals[y][x] = 0;
+	}
 	
-	public int getGoalCount() {
-		return mGoalCount;
+	public void setGoal(int x, int y, int value) {
+		mGoalCount = mGoalCount - (mGoals[y][x] - value);
+		mGoals[y][x] = value;
 	}
 
 	public int getSizeX() {
-		return mSizeX;
+		return mDesign.getSizeY();
 	}
 
 	public int getSizeY() {
-		return mSizeY;
+		return mDesign.getSizeY();
 	}
-
+	
 	public int getInitialPositionX() {
-		return mInitialPositionX;
+		return mDesign.getInitialPositionX();
 	}
 
 	public int getInitialPositionY() {
-		return mInitialPositionY;
+		return mDesign.getInitialPositionY();
+	}
+	
+	public int getGoalCount() {
+		return mGoalCount;
 	}
 }

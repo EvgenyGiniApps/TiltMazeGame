@@ -1,4 +1,4 @@
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 public final class Wall {
 	public static final int TOP = 1 << 0;

@@ -29,7 +29,7 @@
  * 
  */
 
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 public final class Messages {
 	// Message IDs

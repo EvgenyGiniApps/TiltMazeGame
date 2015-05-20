@@ -1,4 +1,4 @@
-package com.giniapps.android.tiltmazes;
+package com.medisense.android.tiltmazes;
 
 import android.content.ContentValues;
 import android.content.Context;
