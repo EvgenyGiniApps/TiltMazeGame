@@ -35,6 +35,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -385,6 +386,12 @@ public class TiltMazesActivity extends Activity {
 
             public void onClick(View v) {
                 mGiniMazeSolvedDialog.dismiss();
+               // finish();
+            }
+        });
+
+        builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            public void onDismiss(DialogInterface dialog) {
                 finish();
             }
         });
