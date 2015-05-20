@@ -330,7 +330,7 @@ public class TiltMazesActivity extends Activity {
         super.onDestroy();
         Log.d("mazeGame", "onDestroy : mGameEndedSuccessfully : " + mGameEndedSuccessfully);
         mActivityIsRunning = false;
-        if (!mGameEndedSuccessfully) {
+        if (!mGameEndedSuccessfully&cameFromMediApplication) {
             broadCastGameEnd(mGameEndedSuccessfully);
         }
     }

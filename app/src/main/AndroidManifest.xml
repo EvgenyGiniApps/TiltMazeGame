@@ -39,7 +39,7 @@
     <application
         android:icon="@drawable/tiltmazes_icon"
         android:label="TiltMazes">
-        <activity android:name="com.medisense.android.tiltmazes.TiltMazesActivity" android:launchMode="singleTask">
+        <activity android:name="com.medisense.android.tiltmazes.TiltMazesActivity" android:launchMode="singleTask" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
