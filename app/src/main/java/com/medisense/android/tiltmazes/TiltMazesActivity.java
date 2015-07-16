@@ -85,7 +85,6 @@ public class TiltMazesActivity extends Activity {
                 mGameEndedSuccessfully = true;
                 mGiniMazeSolvedDialog = showCustomDialog(TiltMazesActivity.this, "", getResources().getString(R.string.end_of_game), getResources().getString(R.string.OK));
                 mGiniMazeSolvedDialog.show();
-                broadCastGameEnd(mGameEndedSuccessfully);
             }
 
         }
@@ -392,6 +391,7 @@ public class TiltMazesActivity extends Activity {
 
         builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
             public void onDismiss(DialogInterface dialog) {
+                broadCastGameEnd(mGameEndedSuccessfully);
                 finish();
             }
         });
